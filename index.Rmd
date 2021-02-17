@@ -2,7 +2,10 @@
 title: "ANLY502 Big Data and Cloud Computing"
 author: "Marck Vaisman and Abhijit Dasgupta"
 date: "Spring 2021"
-output: html_document
+output: 
+  html_document:
+    toc: true
+toc-title: "Table of contents"
 ---
 
 ## [Course Information](README.html){target=_blank}
