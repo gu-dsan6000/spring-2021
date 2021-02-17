@@ -101,6 +101,8 @@ tbl %>%
 	kableExtra::kable_styling(full_width = FALSE)
 ```
 
+Videos of all lectures and office hours are available on the class [Canvas site](https://canvas.georgetown.edu){target=_blank}
+
 # Readings, Quizzes and Homework
 
 All readings, quizzes and homework are posted in the class [Canvas site](https://canvas.georgetown.edu){target=_blank}
