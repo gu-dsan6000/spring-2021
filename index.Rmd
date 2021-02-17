@@ -99,7 +99,7 @@ tbl <- tibble(
 )
 
 tbl %>% 
-	filter(dts < curr_date) %>% 
+	filter(dts <= curr_date) %>% 
 	knitr::kable() %>% 
 	kableExtra::kable_styling(full_width = FALSE)
 ```
