@@ -1,0 +1,111 @@
+---
+title: "ANLY502 Big Data and Cloud Computing"
+author: "Marck Vaisman and Abhijit Dasgupta"
+date: "Spring 2021"
+output: html_document
+---
+
+## [Course Information](README.html){target=_blank}
+
+-   **Instructors:**
+    -   Abhijit Dasgupta (abhijit.dasgupta at georgetown.edu)
+    -   Marck Vaisman (marck.vaisman at georgetown.edu)
+-   **TA’s:**
+    -   Anderson Monken (aem303)
+    -   Yunice Xiao (yx197)
+    -   Nicole Yoder (ny130)
+-   **Class Schedule:**
+    -   Class meets Tuesdays 6:30-9:00pm
+    -   Recurring Zoom Link (GU credentials required):
+        <https://georgetown.zoom.us/j/xxxxxxxxxxx>
+    -   Both sections meet together
+
+### Course Description
+
+Data is everywhere! Many times, it’s just too big to work with
+traditional tools. This is a hands-on, practical workshop style course
+about using cloud computing resources to do analysis and manipulation of
+datasets that are too large to fit on a single machine and/or analyzed
+with traditional tools. The course will focus on Spark, MapReduce, the
+Hadoop Ecosystem and other tools.
+
+You will understand how to acquire and/or ingest the data, and then
+massage, clean, transform, analyze, and model it within the context of
+big data analytics. You will be able to think more programmatically and
+logically about your big data needs, tools and issues.
+
+### Course Objectives
+
+By the end of the term, you will to be able to:
+
+-   Operate big data tools and cloud infrastructure, including Spark
+    (with all of Spark’s APIs), MapReduce, Hadoop, and other tools in
+    the big data ecosystem
+-   Develop strategies to break down large problems and datasets into
+    manageable pieces
+-   Recognize and use ancillary tools that support big data processing,
+    including git and the Linux command line
+-   Setup and manage big data infrastructure and tools in the cloud on
+    Microsoft Azure and Amazon Web Services
+-   Identify broad spectrum resources and documentation to remain
+    current with big data tools and developments
+-   Execute a big data analytics exercise from start to finish: ingest,
+    wrangle, clean, analyze, store and present
+
+### Pre-requisites
+
+-   Proficiency with Python, R, and and SQL. **Note:** We will use
+    Python as the primary interface to Apache Spark, through
+    [PySpark](https://spark.apache.org/docs/latest/api/python/index.html)
+-   Familiarity with programming concepts such as flow control,
+    input/output, variable assignment
+
+# Lectures
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(glue)
+
+knitr::opts_chunk$set(echo=FALSE, message=F, warning=F)
+
+Weeks <- paste('Week', 1:14)
+start_date <- lubridate::as_date('2021-01-26')
+dts <- start_date + days(7*(0:13))
+curr_date <- as_date(Sys.Date())
+```
+
+```{r lectures}
+week_folders <- str_pad(1:14,2,'left',0)
+lecture_files <- file.path(week_folders, paste0(week_folders,'.html'))
+
+titles <- rep('', length(lecture_files))
+for(i in 1:length(lecture_files)){
+	if(file.exists(lecture_files[i])){
+		x <- system(paste('grep "<title>"', lecture_files[i]), intern=TRUE)
+		titles[i] <- str_trim(
+			str_remove_all(x, '<\\/*title>')
+		)
+	}
+}
+
+tbl <- tibble(
+	'Week' = Weeks,
+	'Date' = format(dts, '%d %b'),
+	'Lecture' = glue('[{titles}]({lecture_files}){{target=_blank}}')
+)
+
+tbl %>% 
+	filter(dts < curr_date) %>% 
+	knitr::kable() %>% 
+	kableExtra::kable_styling(full_width = FALSE)
+```
+
+# Readings, Quizzes and Homework
+
+All readings, quizzes and homework are posted in the class [Canvas site](https://canvas.georgetown.edu){target=_blank}
+
+# Access to cloud resources
+
+Please follow the instructions [here](https://github.com/bigdatateaching/lab-cloud/blob/main/README.md){target=_blank} to set up accounts on Amazon Web Services (AWS) and Azure for this class
+
