@@ -29,93 +29,646 @@ class: center, middle, inverse, title-slide
 
 
 
+
+
+
 .pull-left[
 ## Admin
 
-* HW 2 due Friday
-* HW 3 (Spark) posted today due Friday 6/19
-* Begin working on projects!
+* A3 (Hadoop Streaming) due Thurs 3/4
+* A4 (Spark) will be posted next week and due Thus 3/18
+* A5/A6 will be due after Spring Break
+* Project requirements will be posted next week
 
-## Last week
+
+## Spark Module (~ 4 weeks)
+
+* Intro to Spark
+* Spark RDDs
+* Spark DataFrames
+* SparkSQL
+* DataBricks on Azure
+* Spark ML
+* Spark Streaming
+]
+
+
+.pull-right[
+## Looking Back
 
 * Intro to Hadoop and MapReduce
 * Hadoop Streaming
-]
 
-.pull-right[
 ## Today
 
-* Intro to Spark, RDDs, SparkSQL, Spark DataFrames 
-* Lab: 
+* Intro to Spark, RDDs, SparkSQL, Spark DataFrames
+* Lab:
   * Start a Hadoop cluster on AWS Elastic MapReduce (EMR) **with a bootstrap script**
   * Use Jupyter and Pyspark as front end to Spark
   * Get to know Spark RDDs and DataFrames
 ]
 ---
 
-# Glossary
+class: inverse, middle, center
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Term &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Definition &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Resilient Distributed Dataset (RDD) &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Spark&#39;s core data structure &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
+# Looking back at distribuing computations
 
 ---
 
-# Limitations of Hadoop/MapReduce
+## Starting with our _BIG_ dataset
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Hadoop Limitation &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Spark Approach &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; For iterative processes and interactive use, Hadoop and MapReduce&#39;s mandatory dumping of output to disk proved to be a huge bottleneck. In ML, for example, users rely on iterative processes to train-test-retrain. &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Spark uses an in-memory processing paradigm, which lowers the disk IO substantially. Spark uses DAGs to store details of each transformation done on a parallelized dataset and does not process them to get results until required (lazy). &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Traditional Hadoop applications needed the data first to be copied to HDFS (or other distributed filesystem) and then did the processing. &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Spark works equally well with HDFS or any POSIX style filesystem. However, parallel Spark needs the data to be distributed. &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Mappers needed a data-localization phase in which the data was written to the local filesystem to bring resilience. &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Resilience in Spark is brough about by the DAGs, in which a missing RDD is re-calculated by following the path from which the RDD was created. &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-
----
-
-class: inverse, center, middle
-
-# Apache Spark
+.center[
+&lt;img src=&quot;img/wikipedia-whole.png&quot; width=700&gt;
+]
 
 
 ---
 
-# What is Spark
+## The data is split
+
+.center[
+&lt;img src=&quot;img/wikipedia-split.png&quot; width=700&gt;
+]
+
+---
+
+## The data is distributed across a cluster of machines
 
 .pull-left[
-&lt;img src=&quot;img/spark-logo.png&quot; width=300&gt;
+&lt;img src=&quot;img/wikipedia-split.png&quot;&gt;
 ]
 
 .pull-right[
-&lt;img src=&quot;img/spark-stack.png&quot; width=300&gt;
+&lt;img src=&quot;img/cluster.png&quot;&gt;
 ]
 
+--
+
+.center[You can think of your split/distributed data as a single collection]
+
+---
+
+## Important Latency Numbers
+
+.center[
+&lt;img src=&quot;img/latency1.png&quot; width=600&gt;
+]
+
+---
+
+## Memory vs. Disk
+
+.center[
+&lt;img src=&quot;img/latency2.png&quot; width=600&gt;
+]
+
+---
+
+## Memory vs. Network
+
+.center[
+&lt;img src=&quot;img/latency3.png&quot; width=600&gt;
+]
+
+
+---
+
+## Memory, Disk and Network
+
+.center[
+&lt;img src=&quot;img/latency4.png&quot; width=600&gt;
+]
+
+
+---
+
+## MapReduce/Hadoop was groundbreaking
+
+* It provided a simple API (map and reduce steps)
+
+* It provided **fault tolerance**, which made it possible to scale to 100s/1000s of nodes of _commodity machines_ where the likelihood of a node failing midway through a job was very high
+  * Computations on very large datasets failed and recovered and jobs completed
+
+--
+
+## **Fault tolerance** came at a cost!
+
+* Between each map and reduce step, MapReduce shuffles its data and writes intermediate data to disk
+  * Reading/writing to disk is 100x slower than in-memory
+  * Network communication is 1,000,000x slower than in-memory
+
+
+---
+
+
+class: inverse, center, middle
+
+# Introducing Spark: a Unified Engine
+
+
+---
+
+## What is Spark
+
+.pull-left[
+&lt;img src=&quot;img/spark-logo.png&quot;&gt;
+]
+
+.pull-right[
+* A simple programming model that can capture streaming, batch, and interactive workloads
+
+* Retains fault-tolerance
+
+* Uses a different strategy for handling latency: it keeps all data __immutable and in memory__
+]
+
+* Provides speed and flexibility
+---
+
+
+## Spark Stack
+
+.center[
+&lt;img src=&quot;img/spark-stack.png&quot;&gt;
+]
+
+
+---
+
+
+## Connected and extensible
+
+.center[
+&lt;img src=&quot;img/spark-connectors.png&quot; width=600&gt;
+]
+
+---
+
+## Three data structure APIs
+
+1. **RDDs** (Resilient Distributed Datasets)
+
+1. **DataFrames** SQL-like structured datasets with query operations
+
+1. **Datasets** A mixture of RDDs and DataFrames
+
+--
+
+**We&#39;ll only use RDDs and DataFrames in this course.**
+
+
+
+---
+
+class: inverse, middle, center
+
+# Spark Architecture and job flow
+
+
+---
+
+class: middle, center
+
+&lt;div align=&quot;center&quot;&gt;
+&lt;img src=&quot;img/spark01.png&quot; width=800&gt;
+&lt;/div&gt;
+
+
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark02.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark03.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark04.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark05.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark06.png&quot;&gt;
+
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark07.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark08.png&quot;&gt;
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark09.png&quot;&gt;
+
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark10.png&quot;&gt;
+
+
+---
+
+class: middle, center
+
+&lt;img src=&quot;img/spark11.png&quot;&gt;
+
+
+---
+
+## Spark vs. Hadoop
+
+
+&lt;style&gt;html {
+  font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Oxygen, Ubuntu, Cantarell, &#39;Helvetica Neue&#39;, &#39;Fira Sans&#39;, &#39;Droid Sans&#39;, Arial, sans-serif;
+}
+
+#ykfmsnbmqi .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ykfmsnbmqi .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ykfmsnbmqi .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ykfmsnbmqi .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ykfmsnbmqi .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ykfmsnbmqi .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ykfmsnbmqi .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ykfmsnbmqi .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ykfmsnbmqi .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ykfmsnbmqi .gt_from_md &gt; :first-child {
+  margin-top: 0;
+}
+
+#ykfmsnbmqi .gt_from_md &gt; :last-child {
+  margin-bottom: 0;
+}
+
+#ykfmsnbmqi .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ykfmsnbmqi .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#ykfmsnbmqi .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ykfmsnbmqi .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ykfmsnbmqi .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ykfmsnbmqi .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#ykfmsnbmqi .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ykfmsnbmqi .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#ykfmsnbmqi .gt_left {
+  text-align: left;
+}
+
+#ykfmsnbmqi .gt_center {
+  text-align: center;
+}
+
+#ykfmsnbmqi .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ykfmsnbmqi .gt_font_normal {
+  font-weight: normal;
+}
+
+#ykfmsnbmqi .gt_font_bold {
+  font-weight: bold;
+}
+
+#ykfmsnbmqi .gt_font_italic {
+  font-style: italic;
+}
+
+#ykfmsnbmqi .gt_super {
+  font-size: 65%;
+}
+
+#ykfmsnbmqi .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+&lt;/style&gt;
+&lt;div id=&quot;ykfmsnbmqi&quot; style=&quot;overflow-x:auto;overflow-y:auto;width:auto;height:auto;&quot;&gt;&lt;table class=&quot;gt_table&quot;&gt;
+
+  &lt;thead class=&quot;gt_col_headings&quot;&gt;
+    &lt;tr&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Hadoop Limitation&lt;/th&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Spark Approach&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody class=&quot;gt_table_body&quot;&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;For iterative processes and interactive use, Hadoop and MapReduce&#39;s mandatory dumping of output to disk proved to be a huge bottleneck. In ML, for example, users rely on iterative processes to train-test-retrain.&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Spark uses an in-memory processing paradigm, which lowers the disk IO substantially. Spark uses DAGs to store details of each transformation done on a parallelized dataset and does not process them to get results until required (lazy).&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Traditional Hadoop applications needed the data first to be copied to HDFS (or other distributed filesystem) and then did the processing.&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Spark works equally well with HDFS or any POSIX style filesystem. However, parallel Spark needs the data to be distributed.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Mappers needed a data-localization phase in which the data was written to the local filesystem to bring resilience.&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Resilience in Spark is brough about by the DAGs, in which a missing RDD is re-calculated by following the path from which the RDD was created.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Hadoop is built on Java and you must use Java to take advantage of all of it&#39;s capabilities. Although you can run non-Java scripts with Hadoop Streaming, it is still running a Java Framework.&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;Spark is developed in Scala, and it has a unified API with so you can use Spark with Scala, Java, R and Python.&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+
+
+&lt;/table&gt;&lt;/div&gt;
 
 ---
 
@@ -126,14 +679,14 @@ class: inverse, center, middle
 
 ---
 
-# Example: word count (yes, again!)
+## Example: word count (yes, again!)
 
 The &quot;Hello, World!&quot; of programming with large scale data.
 
 
 ```python
 # read data from text file and split each line into words
-rdd = sc.textFile(&quot;...&quot;) 
+rdd = sc.textFile(&quot;...&quot;)
 
 count = rdd.flatMap(lambda line: line.split(&quot; &quot;)) \ # separate lines into words
 					 .map(lambda word: (word, 1)) \ # Add 1 to each word
@@ -144,7 +697,15 @@ count = rdd.flatMap(lambda line: line.split(&quot; &quot;)) \ # separate lines i
 
 ---
 
-# How to create and RDD?
+## Transformations and Actions (key Spark concept)
+
+.center[
+&lt;img src=&quot;img/transformations-and-actions.png&quot;&gt;
+]
+
+---
+
+## How to create and RDD?
 
 RDDs can be created in two ways:
 
@@ -156,9 +717,10 @@ RDDs can be created in two ways:
   * **`parallelize:`** converts a local object into an RDD
   * **`textFile:`** reads a **text** file from your filesystem and returns an RDD of strings
 
+
 ---
 
-# Transformations and Actions
+## Transformations and Actions
 
 Spark defines _**transformations**_ and _**actions**_ on RDDs:
 
@@ -170,7 +732,7 @@ Spark defines _**transformations**_ and _**actions**_ on RDDs:
 
 ---
 
-# Transformations and Actions
+## Transformations and Actions
 
 Spark defines _**transformations**_ and _**actions**_ on RDDs:
 
@@ -185,69 +747,775 @@ Spark defines _**transformations**_ and _**actions**_ on RDDs:
 
 ---
 
-# Common Transformations
+## Common `RDD` Transformations
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Method &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Description &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; map &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Expresses a one-to-one transformation and transforms each element of a collection into one element of the resulting collection &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; flatMap &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Expresses a one-to-many transformation and transforms each element to 0 or more elements &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; filter &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Applies filter function that returns a boolean and returs an RDD of elements that have passed the filter condition &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; distinct &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns RDD with duplicates removed &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
+
+
+&lt;style&gt;html {
+  font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Oxygen, Ubuntu, Cantarell, &#39;Helvetica Neue&#39;, &#39;Fira Sans&#39;, &#39;Droid Sans&#39;, Arial, sans-serif;
+}
+
+#xcokhgmedu .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#xcokhgmedu .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#xcokhgmedu .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#xcokhgmedu .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#xcokhgmedu .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#xcokhgmedu .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#xcokhgmedu .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#xcokhgmedu .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#xcokhgmedu .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#xcokhgmedu .gt_from_md &gt; :first-child {
+  margin-top: 0;
+}
+
+#xcokhgmedu .gt_from_md &gt; :last-child {
+  margin-bottom: 0;
+}
+
+#xcokhgmedu .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#xcokhgmedu .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#xcokhgmedu .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#xcokhgmedu .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#xcokhgmedu .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#xcokhgmedu .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#xcokhgmedu .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#xcokhgmedu .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#xcokhgmedu .gt_left {
+  text-align: left;
+}
+
+#xcokhgmedu .gt_center {
+  text-align: center;
+}
+
+#xcokhgmedu .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#xcokhgmedu .gt_font_normal {
+  font-weight: normal;
+}
+
+#xcokhgmedu .gt_font_bold {
+  font-weight: bold;
+}
+
+#xcokhgmedu .gt_font_italic {
+  font-style: italic;
+}
+
+#xcokhgmedu .gt_super {
+  font-size: 65%;
+}
+
+#xcokhgmedu .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+&lt;/style&gt;
+&lt;div id=&quot;xcokhgmedu&quot; style=&quot;overflow-x:auto;overflow-y:auto;width:auto;height:auto;&quot;&gt;&lt;table class=&quot;gt_table&quot;&gt;
+
+  &lt;thead class=&quot;gt_col_headings&quot;&gt;
+    &lt;tr&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Method&lt;/th&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody class=&quot;gt_table_body&quot;&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;map&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Expresses a one-to-one transformation and transforms each element of a collection into one element of the resulting collection&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;flatMap&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Expresses a one-to-many transformation and transforms each element to 0 or more elements&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;filter&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Applies filter function that returns a boolean and returs an RDD of elements that have passed the filter condition&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;distinct&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns RDD with duplicates removed&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+
+
+&lt;/table&gt;&lt;/div&gt;
 
 ---
 
-# Common Actions
+## Common `RDD` Actions
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Method &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Description &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; collect &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns all distributed elements of the RDD to the driver &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; count &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns the number of elements in an RDD &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; take &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns the first _n_ elements of the RDD &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; reduce &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Combines elements of the RDD together using some function and returns result &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
+
+
+&lt;style&gt;html {
+  font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Oxygen, Ubuntu, Cantarell, &#39;Helvetica Neue&#39;, &#39;Fira Sans&#39;, &#39;Droid Sans&#39;, Arial, sans-serif;
+}
+
+#ysexomfccc .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ysexomfccc .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ysexomfccc .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ysexomfccc .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ysexomfccc .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ysexomfccc .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ysexomfccc .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ysexomfccc .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ysexomfccc .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ysexomfccc .gt_from_md &gt; :first-child {
+  margin-top: 0;
+}
+
+#ysexomfccc .gt_from_md &gt; :last-child {
+  margin-bottom: 0;
+}
+
+#ysexomfccc .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ysexomfccc .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#ysexomfccc .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ysexomfccc .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ysexomfccc .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ysexomfccc .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#ysexomfccc .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ysexomfccc .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#ysexomfccc .gt_left {
+  text-align: left;
+}
+
+#ysexomfccc .gt_center {
+  text-align: center;
+}
+
+#ysexomfccc .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ysexomfccc .gt_font_normal {
+  font-weight: normal;
+}
+
+#ysexomfccc .gt_font_bold {
+  font-weight: bold;
+}
+
+#ysexomfccc .gt_font_italic {
+  font-style: italic;
+}
+
+#ysexomfccc .gt_super {
+  font-size: 65%;
+}
+
+#ysexomfccc .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+&lt;/style&gt;
+&lt;div id=&quot;ysexomfccc&quot; style=&quot;overflow-x:auto;overflow-y:auto;width:auto;height:auto;&quot;&gt;&lt;table class=&quot;gt_table&quot;&gt;
+
+  &lt;thead class=&quot;gt_col_headings&quot;&gt;
+    &lt;tr&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Method&lt;/th&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody class=&quot;gt_table_body&quot;&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;collect&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns &lt;strong&gt;all&lt;/strong&gt; distributed elements of the &lt;code&gt;RDD&lt;/code&gt; to the driver&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;count&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns the number of elements in an &lt;code&gt;RDD&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;take&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns the first &lt;em&gt;n&lt;/em&gt; elements of the &lt;code&gt;RDD&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;reduce&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Combines elements of the &lt;code&gt;RDD&lt;/code&gt; together using some function and returns result&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+
+
+&lt;/table&gt;&lt;/div&gt;
 
 ---
 
-# Another example
+## `collect` **CAUTION**
+
+.center[
+&lt;img src=&quot;img/collect-warning.png&quot;&gt;
+]
+
+---
+
+## Another example
 
 Let&#39;s assume that we have an RDD of strings which contains gigabytes of logs collected over the previous year. Each element of the RDD represents one line of logs.
 
@@ -259,7 +1527,7 @@ Assuming the dates come in the form `YYYY-MM-DD:HH:MM:SS` and errors are logged 
 
 ```python
 # read data from text file and split each line into words
-logs = sc.textFile(&quot;...&quot;) 
+logs = sc.textFile(&quot;...&quot;)
 
 # this is a transformation
 errors = logs.filter(lambda x: &quot;error&quot; in x and &quot;2019-12&quot; in x)
@@ -272,7 +1540,7 @@ Spark computes RDDs the first time they are used in an action!
 
 ---
 
-# Caching and Persistence
+## Caching and Persistence
 
 By default, RDDs are recomputed every time you run an action on them. This can be expensive (in time) if you need to use a dataset more than once.
 
@@ -291,92 +1559,13 @@ errors = logs.filter(lambda x: &quot;error&quot; in x and &quot;2019-12&quot; in
 
 ---
 
-# Using memory is great for iterative workloads
+## Using memory is great for iterative workloads
 
 &lt;div align=&quot;center&quot;&gt;
 &lt;img src=&quot;img/hadoop-spark-run-differences.png&quot; width=1000&gt;
 &lt;/div&gt;
 
 
----
-
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark01.png&quot; width=800&gt;
-&lt;/div&gt;
-
-
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark02.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark03.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark04.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark05.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark06.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark07.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark08.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark09.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark10.png&quot; width=800&gt;
-&lt;/div&gt;
-
----
-# How does a Spark job run?
-
-&lt;div align=&quot;center&quot;&gt;
-&lt;img src=&quot;img/spark11.png&quot; width=800&gt;
-&lt;/div&gt;
 
 ---
 
@@ -386,7 +1575,7 @@ class: inverse, center, middle
 
 ---
 
-# DataFrames in a nutshell
+## DataFrames in a nutshell
 
 `DataFrames` are...
 
@@ -417,7 +1606,7 @@ SparkSQL applies years of research on relational optimizations in the database c
 
 ---
 
-# DataFrame Data Types
+## DataFrame Data Types
 
 SparkSQL&#39;s `DataFrames` operate on a restricted (yet broad) set of data types. These are the most common:
 
@@ -429,7 +1618,17 @@ SparkSQL&#39;s `DataFrames` operate on a restricted (yet broad) set of data type
 
 ---
 
-# Getting a look at your data
+## A `DataFrame`
+
+.center[
+&lt;img src=&quot;img/dataframe.png&quot;&gt;
+]
+
+
+---
+
+
+## Getting a look at your data
 
 There are a few ways you can have a look at your data in `DataFrames`:
 
@@ -440,47 +1639,396 @@ There are a few ways you can have a look at your data in `DataFrames`:
 
 ---
 
-# Common `DataFrame` Transformations
+## Common `DataFrame` Transformations
 
 Like on RDD&#39;s, transformations on `DataFrames` are:
 
 1. Operations that return another `DataFrame` as a results
 1. Are lazily evaluated
 
-## Some common transform include:
+## Some common transformations include:
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Method &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Description &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; select &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Selects a set of named columns and returns a new DataFrame with those columns as a result &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; agg &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Performs aggregations on a series of columns and returns a new DataFrame with the calculated output &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; groupBy &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Groups the DataFrame using the specified columns, usually used before some kind of aggregation &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; join &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Inner join with another DataFrame &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
+
+
+&lt;style&gt;html {
+  font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Oxygen, Ubuntu, Cantarell, &#39;Helvetica Neue&#39;, &#39;Fira Sans&#39;, &#39;Droid Sans&#39;, Arial, sans-serif;
+}
+
+#tgpnwnlcdv .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#tgpnwnlcdv .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#tgpnwnlcdv .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#tgpnwnlcdv .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#tgpnwnlcdv .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#tgpnwnlcdv .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#tgpnwnlcdv .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#tgpnwnlcdv .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#tgpnwnlcdv .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#tgpnwnlcdv .gt_from_md &gt; :first-child {
+  margin-top: 0;
+}
+
+#tgpnwnlcdv .gt_from_md &gt; :last-child {
+  margin-bottom: 0;
+}
+
+#tgpnwnlcdv .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#tgpnwnlcdv .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#tgpnwnlcdv .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#tgpnwnlcdv .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#tgpnwnlcdv .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#tgpnwnlcdv .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#tgpnwnlcdv .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#tgpnwnlcdv .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#tgpnwnlcdv .gt_left {
+  text-align: left;
+}
+
+#tgpnwnlcdv .gt_center {
+  text-align: center;
+}
+
+#tgpnwnlcdv .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#tgpnwnlcdv .gt_font_normal {
+  font-weight: normal;
+}
+
+#tgpnwnlcdv .gt_font_bold {
+  font-weight: bold;
+}
+
+#tgpnwnlcdv .gt_font_italic {
+  font-style: italic;
+}
+
+#tgpnwnlcdv .gt_super {
+  font-size: 65%;
+}
+
+#tgpnwnlcdv .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+&lt;/style&gt;
+&lt;div id=&quot;tgpnwnlcdv&quot; style=&quot;overflow-x:auto;overflow-y:auto;width:auto;height:auto;&quot;&gt;&lt;table class=&quot;gt_table&quot;&gt;
+
+  &lt;thead class=&quot;gt_col_headings&quot;&gt;
+    &lt;tr&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Method&lt;/th&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody class=&quot;gt_table_body&quot;&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;select&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Selects a set of named columns and returns a new &lt;code&gt;DataFrame&lt;/code&gt; with those columns as a result&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;agg&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Performs aggregations on a series of columns and returns a new &lt;code&gt;DataFrame&lt;/code&gt; with the calculated output&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;groupBy&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Groups the DataFrame using the specified columns, usually used before some kind of aggregation&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;join&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Inner join with another DataFrame&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+
+
+&lt;/table&gt;&lt;/div&gt;
 
 Other transformations include: `filter`, `limit`, `orderBy`, `where`.
 
 ---
 
-# Specifying columns
+## Specifying columns
 
 Most methods take a parameter of type `Column` or `String`, always referring to some attribute/column in the the DataFrame.
 
@@ -493,7 +2041,8 @@ You can select and work with columns in ways using the DataFrame API:
 3. Using SQL query string: `df.filter(&quot;age &gt; 18&quot;)`
 
 ---
- # Filtering in SparkSQL
+
+## Filtering in SparkSQL
 
 The DataFrame API makes two methods available for filtering: `filter` and `where`. They are equivalent!
 
@@ -502,7 +2051,7 @@ The DataFrame API makes two methods available for filtering: `filter` and `where
 employee_df.filter(&quot;age &gt; 30&quot;).show()
 ```
 
-is equivalent to 
+is equivalent to
 
 
 ```python
@@ -511,7 +2060,7 @@ employee_df.where(&quot;age &gt; 30&quot;).show()
 
 ---
 
-# Use either DataFrame API and SparkSQL
+## Use either DataFrame API and SparkSQL
 
 The DataFrame API and SparkSQL syntax can be used interchangeably!
 
@@ -528,13 +2077,13 @@ results = df.select(&quot;firstname&quot;, &quot;lastname&quot;) \
 
 ```python
 spark.sql(&quot;select firstname, lastname from df_view where city == &#39;Washington D.C.&#39; and age &gt;= 25&quot;)
-          
+
 # * Note: you have to register `df` using `df.createOrReplaceTempView(&quot;df_view&quot;)`
 ```
 
 ---
 
-# Grouping and aggregating on DataFrames
+## Grouping and aggregating on DataFrames
 
 Some of the most common tasks on structured data tables include:
 
@@ -556,48 +2105,426 @@ results = df.groupBy(&quot;state&quot;) \
 
 ---
 
-# Actions on DataFrames
+## Actions on DataFrames
 
 Like RDDs, `DataFrames` also have their own set of actions:
 
-&lt;table&gt;
- &lt;thead&gt;
-  &lt;tr&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Method &lt;/th&gt;
-   &lt;th style=&quot;text-align:left;&quot;&gt; Description &lt;/th&gt;
-  &lt;/tr&gt;
- &lt;/thead&gt;
-&lt;tbody&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; collect &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns an arrawy that contains all the rows in the DataFrame to the driver &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; count &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns the number of rows in a DataFrame &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; first &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns the first row in the DataFrame &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; show &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Displays the top 20 rows in the DataFrame &lt;/td&gt;
-  &lt;/tr&gt;
-  &lt;tr&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; take &lt;/td&gt;
-   &lt;td style=&quot;text-align:left;&quot;&gt; Returns the first _n_ rows of the RDD &lt;/td&gt;
-  &lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
+
+
+&lt;style&gt;html {
+  font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Oxygen, Ubuntu, Cantarell, &#39;Helvetica Neue&#39;, &#39;Fira Sans&#39;, &#39;Droid Sans&#39;, Arial, sans-serif;
+}
+
+#bxrakffprp .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#bxrakffprp .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#bxrakffprp .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#bxrakffprp .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#bxrakffprp .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#bxrakffprp .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#bxrakffprp .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#bxrakffprp .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#bxrakffprp .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#bxrakffprp .gt_from_md &gt; :first-child {
+  margin-top: 0;
+}
+
+#bxrakffprp .gt_from_md &gt; :last-child {
+  margin-bottom: 0;
+}
+
+#bxrakffprp .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#bxrakffprp .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#bxrakffprp .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#bxrakffprp .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#bxrakffprp .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#bxrakffprp .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#bxrakffprp .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#bxrakffprp .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#bxrakffprp .gt_left {
+  text-align: left;
+}
+
+#bxrakffprp .gt_center {
+  text-align: center;
+}
+
+#bxrakffprp .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#bxrakffprp .gt_font_normal {
+  font-weight: normal;
+}
+
+#bxrakffprp .gt_font_bold {
+  font-weight: bold;
+}
+
+#bxrakffprp .gt_font_italic {
+  font-style: italic;
+}
+
+#bxrakffprp .gt_super {
+  font-size: 65%;
+}
+
+#bxrakffprp .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+&lt;/style&gt;
+&lt;div id=&quot;bxrakffprp&quot; style=&quot;overflow-x:auto;overflow-y:auto;width:auto;height:auto;&quot;&gt;&lt;table class=&quot;gt_table&quot;&gt;
+
+  &lt;thead class=&quot;gt_col_headings&quot;&gt;
+    &lt;tr&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Method&lt;/th&gt;
+      &lt;th class=&quot;gt_col_heading gt_columns_bottom_border gt_left&quot; rowspan=&quot;1&quot; colspan=&quot;1&quot;&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody class=&quot;gt_table_body&quot;&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;collect&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns an &lt;strong&gt;array&lt;/strong&gt; that contains all the rows in the DataFrame to the driver&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;count&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns the number of rows in a DataFrame&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;first&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns the first row in the DataFrame&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;show&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Displays the top 20 rows in the DataFrame&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;&lt;code&gt;take&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+      &lt;td class=&quot;gt_row gt_left&quot;&gt;&lt;div class=&#39;gt_from_md&#39;&gt;&lt;p&gt;Returns the first &lt;em&gt;n&lt;/em&gt; rows of the RDD&lt;/p&gt;
+&lt;/div&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+
+
+&lt;/table&gt;&lt;/div&gt;
 
 ---
 
-# Limitations on DataFrame
+## `collect` **CAUTION**
+
+.center[
+&lt;img src=&quot;img/collect-warning.png&quot;&gt;
+]
+
+---
+
+## Limitations on `DataFrame`
 
 * Can only use DataFrame data types
 * If your unstructured data cannot be reformulated to adhere to some kind of schema, it would be better to use RDDs.
 
+
+---
+
+class: middle, center
+
+# One of the most common performance bottlenecks of new Spark users happens because you re-evaluate several transformations when you could cache intermediate results to memory
+
+---
+
+
+class: inverse, center, middle
+
+# Demo: Starting a Spark Cluster
+
+---
+
+class: inverse, center, middle
+
+# Quiz
 
 ---
 
@@ -616,31 +2543,31 @@ class: inverse, center, middle
 // ...titles is a comma-separated list a values to determine number and contents of columns
 
 remark.macros.col_header = function (...titles) {
-  
+
   var num_items = titles.length;
   var width = Math.floor(100/num_items) - 2*0.5;
-  
+
   var code =
 '<center>'+
 '<div class="multicolrow"' +
     'style="font-weight:bold; text-align:center; vertical-align: middle; display: flex;">';
 
   for(let i = 0; i < num_items; i++)
-  code = 
-    code +  
+  code =
+    code +
     '<div class="multicolhead wordwrap"'+
     'style="'+
     'float:left;'+
     //'align-items: stretch;'+
     'padding: 1% 0.25% 1% 0.25%;'+
     'font-size: 80%;' +
-    'margin: 1% 0.25% 1% 0.25%;' + 
-    'width: ' + width + '%;">' + 
-    titles[i] + 
+    'margin: 1% 0.25% 1% 0.25%;' +
+    'width: ' + width + '%;">' +
+    titles[i] +
     '</div>';
 
 
- code = code + 
+ code = code +
 '</div>' +
 '</center>';
 
@@ -652,10 +2579,10 @@ return code;
 // ...bodies is a comma-separated list a values to determine number and contents of columns
 
 remark.macros.col_list = function (...bodies) {
-  
+
   var num_items = bodies.length;
   var width = Math.floor(100/num_items) - 0.5;
-  
+
   var code =
 '<center>'+
 '<div class="multicolrow" style="text-align:left;">' ;
@@ -666,9 +2593,9 @@ remark.macros.col_list = function (...bodies) {
   '<div class="multicolcol" style="'+
   'float:left;'+
   'font-size: 80%;' +
-  'margin: 0% 0.25% 0% 0.25%;' + 
-  'width:' + width + '%;"> <li>' + 
-  bodies[i] + 
+  'margin: 0% 0.25% 0% 0.25%;' +
+  'width:' + width + '%;"> <li>' +
+  bodies[i] +
   '</li> </div>';
 
 code = code +
@@ -683,10 +2610,10 @@ return code;
 // ...bodies is a comma-separated list a values to determine number and contents of columns
 
 remark.macros.col_row = function (...bodies) {
-  
+
   var num_items = bodies.length;
   var width = Math.floor(100/num_items) - 0.5;
-  
+
   var code =
 '<center>'+
 '<div class="multicolrow" style="text-align:left;">' ;
@@ -697,9 +2624,9 @@ remark.macros.col_row = function (...bodies) {
   '<div class="multicolcol" style="'+
   'float:left;'+
   'font-size: 80%;' +
-  'margin: 0% 0.25% 0% 0.25%;' + 
-  'width:' + width + '%;">' + 
-  bodies[i] + 
+  'margin: 0% 0.25% 0% 0.25%;' +
+  'width:' + width + '%;">' +
+  bodies[i] +
   '</div>';
 
 code = code +
